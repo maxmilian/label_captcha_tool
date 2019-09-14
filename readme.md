@@ -10,6 +10,6 @@ I've found some open-source label captcha tool, but it took me a lots of time to
 
 The page will be saved to browser localStorage as cache every 60 seconds. When completing all labeling, just click `Export as CSV` button to download csv file.
 
-[截圖1](image/image1.png)
+![截圖1](image/image1.png)
 
-[截圖2](image/image2.png)
+![截圖2](image/image2.png)
