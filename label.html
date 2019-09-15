@@ -11,14 +11,16 @@
       <p>驗證碼可放置於 captcha 目錄，由 1.jpg, 2.jpg, 依此類推。</p>
       <p>Please locate captcha in <strong>captcha</strong> folder, 1.jpg, 2.jpg and etc.</p>
 
-      <div class="row mb-5">
+      <div class="row">
         <div class="col-8">
           <label for="autoTab">自動跳下一組 (Jump next captcha automatically):</label>
           <select id="autoTab" name="autoTab" class="form-control">
               <option value="0">Disable</option>
+              <option value="3">3 char</option>
               <option value="4" selected>4 char</option>
               <option value="5">5 char</option>
               <option value="6">6 char</option>
+              <option value="7">7 char</option>
           </select>
         </div>
         <div class="col-4">
@@ -29,6 +31,13 @@
               <li class="page-item"><a class="page-link" href="#">Next</a></li>
             </ul>
           </nav>
+        </div>
+      </div>
+
+      <div class="row mb-5">
+        <div class="col-8">
+          <label for="allowChars">可接收字元 (Allowable chars):</label>
+          <input type="text" class="form-control" id="allowChars" name="allowChars" placeholder="123456ABCD">
         </div>
       </div>
 
@@ -45,7 +54,7 @@
             <tr class="rowLabel">
               <td></td>
               <td><img src=""></td>
-              <td><input type="text" class="form-control"></td>
+              <td><input type="text" class="form-control" pattern="[234579ACFHKMNPQRTYZ]{1,4}"></td>
             </tr>
           </tbody>
         </table>
@@ -86,19 +95,36 @@
         }
       }
 
-      function assignPagination(page, size, autoTab) {
+      function getQueryString(page, size, autoTab, allowChars) {
+        let query = {
+          "page": page
+        };
+        if (size && parseInt(size) != 50) {
+          query["size"] = size;
+        }
+        if (autoTab && parseInt(autoTab) != 0) {
+          query["autoTab"] = autoTab;
+        }
+        if (allowChars && allowChars != "") {
+          query["allowChars"] = allowChars;
+        }
+        return new URLSearchParams(query).toString();
+      }
+
+      function assignPagination(page, size, autoTab, allowChars) {
         let p = parseInt(page) - 1;
         for (i = 1; i <= 3; i++) {
           if (p <= 0) {
             $("#pagination1 a").eq(i - 1).hide();
             $("#pagination2 a").eq(i - 1).hide();
           } else {
+            let queryStr = getQueryString(p, size, autoTab, allowChars);
             $("#pagination1 a").eq(i - 1).show();
             $("#pagination1 a").eq(i - 1).text(p);
-            $("#pagination1 a").eq(i - 1).attr("href", "?page=" + p + "&size=" + size + "&autoTab=" + autoTab);
+            $("#pagination1 a").eq(i - 1).attr("href", "?" + queryStr);
             $("#pagination2 a").eq(i - 1).show();
             $("#pagination2 a").eq(i - 1).text(p);
-            $("#pagination2 a").eq(i - 1).attr("href", "?page=" + p + "&size=" + size + "&autoTab=" + autoTab);
+            $("#pagination2 a").eq(i - 1).attr("href", "?" + queryStr);
           }
           p++;
         }
@@ -200,25 +226,39 @@
         const page = parseInt(searchParams.get("page") ? searchParams.get("page") : 1);
         const size = parseInt(searchParams.get("size") ? searchParams.get("size") : 50);
         const autoTab = parseInt(searchParams.get("autoTab") ? searchParams.get("autoTab") : 4);
+        const allowChars = searchParams.get("allowChars");
         $("select[name=autoTab]").val(autoTab);
+        $("input[name=allowChars]").val(allowChars);
 
         generateTable(size);
         assignImage(page, size);
-        assignPagination(page, size, autoTab);
+        assignPagination(page, size, autoTab, allowChars);
         loadCache();
 
-        if (autoTab != 0) {
-          $("input").keyup(function(event) {
-            if ($(event.currentTarget).val().length >= autoTab) {
+        $("tbody input").keyup(function(event) {
+          let val = $(event.currentTarget).val();
+          if (allowChars != null && allowChars != "") {
+            let re = new RegExp("[" + allowChars + "]*");
+            let match = val.match(re);
+            if (match[0] != val) {
+              $(event.currentTarget).val(match[0]);
+              return;
+            }
+          }
+
+          if (autoTab != 0) {
+            if (val.length >= autoTab) {
               let index = $(event.currentTarget).parent().parent().parent().find("input").index($(event.currentTarget));
               $(event.currentTarget).parent().parent().parent().find("input").eq(index + 1).focus();
             }
-          });
-        }
+          }
+        });
 
         $("select#autoTab").change(function(){
-          let t = $("select[name=autoTab]").val();
-          window.location.href = "?page=" + page + "&size=" + size + "&autoTab=" + t;
+          let autoTab = $("select[name=autoTab]").val();
+          let allowChars = $("input[name=allowChars]").val();
+          let queryStr = getQueryString(page, size, autoTab, allowChars);
+          window.location.href = "?" + queryStr;
         });
 
         $("#loadCache").click(function() {
@@ -238,7 +278,7 @@
           clearTimeout(timeoutId);
         }
 
-        timeoutId = setTimeout(function() {
+        timeoutId = setTimeout(function () {
         	saveCache()
         }, 60000);
       });
