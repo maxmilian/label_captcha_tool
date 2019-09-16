@@ -7,7 +7,7 @@
   <body>
 
     <div class="container">
-      <h2>標註你的驗證碼 labeling the captcha</h2>
+      <h2>標記你的驗證碼 labeling the captcha</h2>
       <p>驗證碼可放置於 captcha 目錄，由 1.jpg, 2.jpg, 依此類推。</p>
       <p>Please locate captcha in <strong>captcha</strong> folder, 1.jpg, 2.jpg and etc.</p>
 
@@ -87,11 +87,11 @@
         }
       }
 
-      function assignImage(page, size) {
+      function assignImage(folder, page, size) {
         for (i = 1; i <= $("tbody tr").length; i++) {
           let no = (page - 1) * size + i;
           $("tbody tr").eq(i - 1).find("td").eq(0).text(no);
-          $("tbody tr").eq(i - 1).find("img").attr("src", "captcha/" + no + ".jpg");
+          $("tbody tr").eq(i - 1).find("img").attr("src", folder + no + ".jpg");
         }
       }
 
@@ -221,6 +221,8 @@
       }
 
       $(document).ready(function() {
+        const captchaFolder = "captcha/";
+
         let searchParams = new URLSearchParams(window.location.search);
         const page = parseInt(searchParams.get("page") ? searchParams.get("page") : 1);
         const size = parseInt(searchParams.get("size") ? searchParams.get("size") : 50);
@@ -236,7 +238,7 @@
         }
 
         generateTable(size);
-        assignImage(page, size);
+        assignImage(captchaFolder, page, size);
         assignPagination(page, size, autoTab, allowChars);
         loadCache();
 
