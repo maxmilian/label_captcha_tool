@@ -8,20 +8,11 @@
 
     <div class="container">
       <h2>標記你的驗證碼 labeling the captcha</h2>
-      <p>驗證碼可放置於 captcha 目錄，由 1.jpg, 2.jpg, 依此類推。</p>
-      <p>Please locate captcha in <strong>captcha</strong> folder, 1.jpg, 2.jpg and etc.</p>
 
-      <div class="row">
+      <div class="row mb-3">
         <div class="col-8">
-          <label for="autoTab">自動跳下一組 (Jump next captcha automatically):</label>
-          <select id="autoTab" name="autoTab" class="form-control">
-              <option value="0">Disable</option>
-              <option value="3">3 char</option>
-              <option value="4" selected>4 char</option>
-              <option value="5">5 char</option>
-              <option value="6">6 char</option>
-              <option value="7">7 char</option>
-          </select>
+          <p>驗證碼可放置於 captcha 目錄，由 1.jpg, 2.jpg, 依此類推。</p>
+          <p>Please locate captcha in <strong>captcha</strong> folder, 1.jpg, 2.jpg and etc.</p>
         </div>
         <div class="col-4">
           <nav>
@@ -34,10 +25,35 @@
         </div>
       </div>
 
+      <div class="row mb-3">
+        <div class="col-3">
+          <label for="captcha">Captcha目錄 (Captcha folder):</label>
+          <input type="text" class="form-control" id="captcha" name="captcha" value="captcha">
+        </div>
+        <div class="col-3">
+          <label for="preprocess">預處理目錄 (Preprocess folder):</label>
+          <input type="text" class="form-control" id="preprocess" name="preprocess" >
+        </div>
+        <div class="col-5">
+          <label for="autoTab">自動跳下一組 (Jump next captcha automatically):</label>
+          <select id="autoTab" name="autoTab" class="form-control">
+              <option value="0">Disable</option>
+              <option value="3">3 char</option>
+              <option value="4" selected>4 char</option>
+              <option value="5">5 char</option>
+              <option value="6">6 char</option>
+              <option value="7">7 char</option>
+          </select>
+        </div>
+      </div>
+
       <div class="row mb-5">
         <div class="col-8">
           <label for="allowChars">可接收字元 (Allowable chars):</label>
           <input type="text" class="form-control" id="allowChars" name="allowChars" placeholder="123456ABCD">
+        </div>
+        <div class="col-4">
+          <button id="apply" type="button" class="btn btn-lg btn-primary mr-3">Apply</button>
         </div>
       </div>
 
@@ -47,6 +63,7 @@
             <tr>
               <th>#</th>
               <th>Image</th>
+              <th style="display: none;">Processed</th>
               <th>Label</th>
             </tr>
           </thead>
@@ -54,6 +71,7 @@
             <tr class="rowLabel">
               <td></td>
               <td><img src=""></td>
+              <td class="processed"><img src=""></td>
               <td><input type="text" class="form-control" pattern="[234579ACFHKMNPQRTYZ]{1,4}"></td>
             </tr>
           </tbody>
@@ -89,15 +107,28 @@
         }
       }
 
-      function assignImage(folder, page, size) {
+      function assignImage(captchaFolder, processedFolder, page, size) {
+        if (processedFolder == "") {
+          $(".processed").hide();
+        }
         for (i = 1; i <= $("tbody tr").length; i++) {
           let no = (page - 1) * size + i;
           $("tbody tr").eq(i - 1).find("td").eq(0).text(no);
-          $("tbody tr").eq(i - 1).find("img").attr("src", folder + no + ".jpg");
+          if (!captchaFolder.endsWith("/")) {
+            captchaFolder += "/";
+          }
+          $("tbody tr").eq(i - 1).find("img").eq(0).attr("src", captchaFolder + no + ".jpg");
+
+          if (processedFolder != "") {
+            if (!processedFolder.endsWith("/")) {
+              processedFolder += "/";
+            }
+            $("tbody tr").eq(i - 1).find("img").eq(1).attr("src", processedFolder + no + ".jpg");
+          }
         }
       }
 
-      function getQueryString(page, size, autoTab, allowChars) {
+      function getQueryString(page, size, autoTab, allowChars, captchaFolder, processedFolder) {
         let query = {
           "page": page
         };
@@ -110,17 +141,23 @@
         if (allowChars && allowChars != "") {
           query["allowChars"] = allowChars;
         }
+        if (captchaFolder && captchaFolder != "captcha") {
+          query["captchaFolder"] = captchaFolder;
+        }
+        if (processedFolder && processedFolder != "") {
+          query["processedFolder"] = processedFolder;
+        }
         return new URLSearchParams(query).toString();
       }
 
-      function assignPagination(page, size, autoTab, allowChars) {
+      function assignPagination(page, size, autoTab, allowChars, captchaFolder, processedFolder) {
         let p = parseInt(page) - 1;
         for (i = 1; i <= 3; i++) {
           if (p <= 0) {
             $("#pagination1 a").eq(i - 1).hide();
             $("#pagination2 a").eq(i - 1).hide();
           } else {
-            let queryStr = getQueryString(p, size, autoTab, allowChars);
+            let queryStr = getQueryString(p, size, autoTab, allowChars, captchaFolder, processedFolder);
             $("#pagination1 a").eq(i - 1).show();
             $("#pagination1 a").eq(i - 1).text(p);
             $("#pagination1 a").eq(i - 1).attr("href", "?" + queryStr);
@@ -223,14 +260,20 @@
       }
 
       $(document).ready(function() {
-        const captchaFolder = "captcha/";
-
         let searchParams = new URLSearchParams(window.location.search);
         const page = parseInt(searchParams.get("page") ? searchParams.get("page") : 1);
         const size = parseInt(searchParams.get("size") ? searchParams.get("size") : 50);
-        const autoTab = parseInt(searchParams.get("autoTab") ? searchParams.get("autoTab") : 4);
+        let autoTab = searchParams.get("autoTab");
         let allowChars = searchParams.get("allowChars");
-        $("select[name=autoTab]").val(autoTab);
+        let captchaFolder = searchParams.get("captchaFolder") ? searchParams.get("captchaFolder") : "captcha";
+        let processedFolder = searchParams.get("processedFolder") ? searchParams.get("processedFolder") : "";
+
+        if (autoTab == null) {
+          autoTab = window.localStorage.getItem("autoTab");
+        }
+        if (autoTab != null) {
+          $("select[name=autoTab]").val(autoTab);
+        }
 
         if (allowChars == null) {
           allowChars = window.localStorage.getItem("allowChars");
@@ -239,9 +282,12 @@
           $("input[name=allowChars]").val(allowChars);
         }
 
+        $("input[name=captcha]").val(captchaFolder);
+        $("input[name=preprocess]").val(processedFolder);
+
         generateTable(size);
-        assignImage(captchaFolder, page, size);
-        assignPagination(page, size, autoTab, allowChars);
+        assignImage(captchaFolder, processedFolder, page, size);
+        assignPagination(page, size, autoTab, allowChars, captchaFolder, processedFolder);
         loadCache();
 
         $("tbody input").keyup(function(event) {
@@ -263,10 +309,13 @@
           }
         });
 
-        $("select#autoTab").change(function() {
+        $("#apply").click(function() {
           let autoTab = $("select[name=autoTab]").val();
           let allowChars = $("input[name=allowChars]").val();
-          let queryStr = getQueryString(page, size, autoTab, allowChars);
+          let captchaFolder = $("input[name=captcha]").val();
+          let processedFolder = $("input[name=preprocess]").val();
+          let queryStr = getQueryString(page, size, autoTab, allowChars, captchaFolder, processedFolder);
+          window.localStorage.setItem("autoTab", autoTab);
           window.location.href = "?" + queryStr;
         });
 
